@@ -435,7 +435,8 @@ def main():
     # Run predictions
     # print(f"\n Running prediction on {source_path}...")
     results = predictor(source=source_path, text=text_prompts, stream=False)
-
+    if is_video(file_paths[0]):
+        convert_avi_to_mp4(outputs_annotated)
     if not results:
         raise RuntimeError("SAM3 returned no results")
 

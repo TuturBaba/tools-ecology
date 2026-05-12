@@ -1,4 +1,4 @@
-<tool id="sam3_semantic_segmentation" name="SAM3 Semantic Segmentation" version="1.0.1+galaxy3" profile="25.1">
+<tool id="sam3_semantic_segmentation" name="SAM3 Semantic Segmentation" version="1.0.1+galaxy4" profile="25.1">
     <description>
         SAM3 performs text-prompted semantic segmentation on images or videos. 
     </description>
@@ -40,7 +40,8 @@
                 --outputs $input.outputs_format
             #end if
         #end if
-        --do_normalization '$do_normalization' 
+        --do_normalization '$do_normalization'
+        --show_bbox '$show_bbox'
     ]]></command>
     <inputs>
         <param name="sam3_models" label="Model data" type="select" help="Contact the administrator of our Galaxy instance if you miss model data">
@@ -58,6 +59,7 @@
             </param>
             <when value="image">
                 <param name="source" type="data" format="jpg,png,tiff" multiple="true" label="Input images">
+                    <validator type="expression" message="Your image file must have a valid extension (e.g. rename 'image' to 'image.png'). Supported formats: .jpg, .png, .tif">value.name.lower().endswith(('.jpg', '.jpeg', '.png', '.tiff', '.tif'))</validator>
                     <validator type="expression" message="TIFF images must contain exactly 3 channels (RGB).">value.ext not in ('tiff') or value.metadata.channels == 3</validator>
                 </param>
                 <param name="outputs_format" type="select" multiple="true" optional="true"
@@ -70,7 +72,9 @@
             </when>
             <when value="video">
                 <param name="source" type="data" format="mp4,avi,mov,gif"
-                    multiple="false" label="Input video file"/>
+                    multiple="false" label="Input video file">
+                    <validator type="expression" message="Your video file must have a valid extension (e.g. rename 'video' to 'video.mp4'). Supported formats: .mp4, .avi, .mov, .gif">value.name.lower().endswith(('.mp4', '.avi', '.mov', '.gif'))</validator>
+                </param>
                 <param name="quality" type="select" label="Video quality"
                     help="Select output video bitrate,does not affect processing speed or annotations. 
                           Higher quality than the original is not useful and will only increase file size.">
@@ -109,6 +113,8 @@
         <param name="vid_stride" type="integer" value="5" min="1" max="300"
             label="Video frame stride"
             help="For video input: process one frame every N frames."/>
+        <param name="show_bbox" type="boolean" checked="true" truevalue="true" falsevalue="false"
+            label="Show bounding boxes on annotated output"/>
         <param name="do_normalization" type="boolean" checked="false" label="Normalize outputs?" >
             <help><![CDATA[
 This option will be applied to all selected formats above.<br/>
@@ -120,10 +126,10 @@ This option will be applied to all selected formats above.<br/>
     </inputs>
     <outputs>
         <data name="Annotations_coco" format="json" from_work_dir="./outputs/annotations.json" label="Annotation COCO">
-            <filter>input['coco_video_mode'] != "no_coco"</filter>
+            <filter>input['outputs_format'] and 'coco' in input['outputs_format'] or input.get('coco_video_mode') == "video" or input.get('coco_video_mode') == "frames"</filter>
         </data>
         <collection name="Coco_Frames" type="list" label="COCO Extracted Frames">
-            <filter>input['coco_video_mode'] == "frames"</filter>
+            <filter>input['input_kind'] == "video" and input.get('coco_video_mode') == "frames"</filter>
             <discover_datasets pattern="__name_and_ext__" directory="outputs/frames"/>
         </collection>
         <collection name="Outputs_annotated" type="list" label="Annotated Outputs">
@@ -182,6 +188,21 @@ How it works
 2. Enter a text prompt describing the object to segment
 3. SAM3 generates segmentation masks and overlays
 4. Results are returned as images or videos
+
+-------------------
+Input
+-------------------
+
+- **Images**: .jpg, .png, .tiff — multiple files accepted 
+- **Video**: .mp4, .avi, .mov, .gif — single file only
+
+.. class:: infomark 
+
+Pay attention to file extensions
+
+- **Galaxy has assigned the wrong datatype**: your file does not appear in the tool input list, click the pencil icon in the history, go to the **Datatype** tab, select the correct format and click **Save**.
+- **The file name has no extension**: the Run button is not active, make sure your file name ends with a valid extension (e.g. rename image to image.jpg) by clicking the pencil icon in the history and fixing it in the **Name** field.
+
 
 -------------------
 Notes
